@@ -13,13 +13,13 @@
 
 ### 方式 1: 安装至 Antigravity / Gemini 全局技能库
 ```bash
-git clone git@github.com:Garfield247/python-scripting.git ~/.gemini/config/skills/python-scripting
+git clone git@github.com:Garfield247/agent-skill-python-scripting.git ~/.gemini/config/skills/python-scripting
 ```
 
 ### 方式 2: 在任意项目中作为本地工作区技能引入
 ```bash
 mkdir -p .agents/skills
-git clone git@github.com:Garfield247/python-scripting.git .agents/skills/python-scripting
+git clone git@github.com:Garfield247/agent-skill-python-scripting.git .agents/skills/python-scripting
 ```
 
 ## 📄 开源协议 (License)
