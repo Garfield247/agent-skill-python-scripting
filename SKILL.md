@@ -206,3 +206,30 @@ signal.signal(signal.SIGTERM, sigint_handler)
 ### 6.3 非零退出码与管道中断排查
 - 捕获 `subprocess.CalledProcessError`，务必打印 `e.stderr.strip()` 提供现场证据；
 - 检查命令在目标环境的依赖路径（`PATH` 差异），避免在本地可执行但在生产 cron 环境中因环境变量缺失报错 `command not found`。
+
+---
+
+# 7. 生产级批处理进阶：幂等断点续跑与 Rich 交互式反馈 (Idempotency & Rich Progress)
+
+### 7.1 幂等性批处理设计 (Idempotent Execution)
+- 所有数据清洗与迁移脚本必须具备**重复执行安全（Idempotent）**；
+- 基于目标业务唯一键（如 `UUID` 或 `MD5(payload)`）执行 `UPSERT` 或前置检查，避免重复运行产生脏数据；
+- 必须支持 `--resume` 参数：中断后再次运行自动跳过已成功处理的记录。
+
+### 7.2 Rich 现代化终端交互反馈
+长时间运行的运维或迁移任务，必须输出带有速率与 ETA 倒计时的进度条：
+```python
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
+
+with Progress(
+    SpinnerColumn(),
+    TextColumn("[progress.description]{task.description}"),
+    BarColumn(),
+    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+    TimeRemainingColumn()
+) as progress:
+    task = progress.add_task("[cyan]正在批量迁移用户数据...", total=10000)
+    for batch in fetch_batches():
+        process_batch(batch)
+        progress.update(task, advance=len(batch))
+```
