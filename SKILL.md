@@ -184,3 +184,25 @@ signal.signal(signal.SIGTERM, sigint_handler)
 - [ ] 是否正确设置了标准退出码（成功 `0`，失败非 `0`）？
 - [ ] 涉及大文件操作时，是否采用了分块流式读取？
 - [ ] 关键控制台输出是否具备时间戳与结构化日志分级？
+
+---
+
+# 6. Bug 分析、排查与子进程异常诊断 (Troubleshooting & Process Diagnostics)
+
+脚本在执行批处理或系统运维操作时发生异常，遵循以下指引定位：
+
+### 6.1 子进程挂起与永久卡死排查 (Subprocess Hang)
+- **根因分析**：
+  1. **未设置超时**：未指定 `timeout` 导致外部命令等待用户输入（如 `ssh` 提示确认主机指纹、`sudo` 等待密码交互）；
+  2. **管道缓冲区死锁 (Pipe Buffer Deadlock)**：使用 `subprocess.Popen(stdout=PIPE, stderr=PIPE)` 但未及时读取，导致操作系统管道缓冲区（64KB）满，子进程永远阻塞。
+- **武器与修复**：
+  统一采用 `subprocess.run(args, timeout=N, capture_output=True, text=True)`，严禁手动管理裸 Popen 管道。
+
+### 6.2 内存溢出 (OOM) 与文件句柄泄漏
+- **现象**：脚本在处理几个 GB 的大型日志或 CSV 文件时进程被操作系统 OOM Killer 强杀（Exit 137）；
+- **排查与修复**：
+  检查是否存在 `file.readlines()` 或 `f.read()` 一次性全量加载；必须改为 `for line in file:` 或固定分块（Chunk-based Streaming）流式消费。
+
+### 6.3 非零退出码与管道中断排查
+- 捕获 `subprocess.CalledProcessError`，务必打印 `e.stderr.strip()` 提供现场证据；
+- 检查命令在目标环境的依赖路径（`PATH` 差异），避免在本地可执行但在生产 cron 环境中因环境变量缺失报错 `command not found`。
